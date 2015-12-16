@@ -31,10 +31,11 @@ const int pin_fwd_right = 2; //Timer 3
 const int pin_rev_left = 7;  //Timer 4
 const int pin_rev_right = 3; //Timer 3
 
-volatile int speed_fwd_left = 0;
-volatile int speed_fwd_right = 0;
-volatile int speed_rev_left = 0;
-volatile int speed_rev_right = 0;
+volatile int speed_fwd_left = 255;
+volatile int speed_fwd_right = 255;
+volatile int speed_rev_left = 255;
+volatile int speed_rev_right = 255;
+volatile float speed_engine  = 0;
 
 
 void messageTwist(const geometry_msgs::Twist& msg);
@@ -48,13 +49,25 @@ ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageTwist);
 
 // speed : 0 is top, 255 is min?
 void messageTwist(const geometry_msgs::Twist& msg) {
-        speed_fwd_left = msg.linear.x;
-        speed_fwd_right = msg.linear.y;
+  
+        if(msg.linear.z < 0 || msg.linear.z > 1) {
+           speed_engine = 1;
+        } else {
+           speed_engine = msg.linear.z;
+        }
         
-        analogWrite(pin_fwd_left, speed_fwd_left);
-        analogWrite(pin_fwd_right, speed_fwd_right);
-
+        //backwards
+        if(msg.linear.x < 0 || msg.linear.y < 0) {
+            analogWrite(pin_rev_left, speed_engine * msg.linear.x);
+            analogWrite(pin_rev_right, speed_engine * msg.linear.y);
+        //forward
+        } else {
+            analogWrite(pin_fwd_left, speed_engine * msg.linear.x);
+            analogWrite(pin_fwd_right, speed_engine * msg.linear.y);
+        }
 }
+
+
 void initPinsMotor() {
   //init all pins for the engine
   //do we need pinMode?
@@ -84,8 +97,8 @@ void setup() {
 }
 
 
-void loop()
-{
+void loop() {
+
   nh.spinOnce();
-  delay(1000);
+  delay(100);
 }
