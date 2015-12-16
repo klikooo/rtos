@@ -39,7 +39,11 @@ volatile int speed_rev_right = 0;
 
 void messageTwist(const geometry_msgs::Twist& msg);
 
-ros::NodeHandle nh;
+class NewHardware: public ArduinoHardware {
+  public: NewHardware() : ArduinoHardware(&Serial1, 57600) {};
+};
+
+ros::NodeHandle_<NewHardware> nh;
 ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageTwist);
 
 // speed : 0 is top, 255 is min?
@@ -49,39 +53,8 @@ void messageTwist(const geometry_msgs::Twist& msg) {
         
         analogWrite(pin_fwd_left, speed_fwd_left);
         analogWrite(pin_fwd_right, speed_fwd_right);
-/*	//determine if we want to go backwards or forwards
-	if(msg.angular.x == 1) {
-		//forward
-   		controlEngine(pin_fwd_left, msg.linear.x);
-   		controlEngine(pin_fwd_right, msg.linear.y);
-   		digitalWrite(pin_rev_left, ENGINE_OFF);
-   		digitalWrite(pin_rev_right, ENGINE_OFF);
-	} else if(msg.angular.y == 1) {
-		//backward
-   		controlEngine(pin_rev_left, msg.linear.x);
-   		controlEngine(pin_rev_right, msg.linear.y); 
-   		digitalWrite(pin_fwd_left, ENGINE_OFF);
-   		digitalWrite(pin_fwd_right, ENGINE_OFF);
-   	} else if(msg.angular.z == 0) {
-                //stop
-                digitalWrite(pin_fwd_left, ENGINE_OFF);
-                digitalWrite(pin_fwd_right, ENGINE_OFF);
-                digitalWrite(pin_rev_left, ENGINE_OFF);
-                digitalWrite(pin_rev_right, ENGINE_OFF);
-        } else {
-                analogWrite(pin_fwd_left, msg.linear.x);
-                analogWrite(pin_fwd_right, msg.linear.y);
-                digitalWrite(pin_rev_left, ENGINE_OFF);
-                digitalWrite(pin_rev_right, ENGINE_OFF);
-        }               */
-}
 
-//inline?? for speed?
-inline void controlEngine(const int pin, const int velocity) {
-  //add timers so we can control velocity(using pwm) also make interrupt based
-  analogWrite(pin, velocity);
 }
-
 void initPinsMotor() {
   //init all pins for the engine
   //do we need pinMode?
