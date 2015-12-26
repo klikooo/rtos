@@ -26,10 +26,10 @@ OCR = Output Compare Register (reset when timer hits value of OCR)
 
 */
 
-const int pin_fwd_left = 6; //Timer 4
-const int pin_fwd_right = 2; //Timer 3
-const int pin_rev_left = 7;  //Timer 4
-const int pin_rev_right = 3; //Timer 3
+const int pin_fwd_left = 6; //Timer 4  OCR4A
+const int pin_fwd_right = 2; //Timer 3 OCR3B
+const int pin_rev_left = 7;  //Timer 4 OCR4B
+const int pin_rev_right = 3; //Timer 3 OCR3C
 
 volatile int speed_fwd_left = 255;
 volatile int speed_fwd_right = 255;
@@ -49,6 +49,8 @@ ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageTwist);
 
 // speed : 0 is top, 255 is min?
 void messageTwist(const geometry_msgs::Twist& msg) {
+        //SET TIMER COUNT TO 0
+        TCNT5 = 0;  
   
         if(msg.linear.z < 0 || msg.linear.z > 1) {
            speed_engine = 1;
@@ -57,12 +59,18 @@ void messageTwist(const geometry_msgs::Twist& msg) {
         }
         
         //backwards
-        if(msg.linear.x < 0 || msg.linear.y < 0) {
-            analogWrite(pin_rev_left, speed_engine * msg.linear.x);
-            analogWrite(pin_rev_right, speed_engine * msg.linear.y);
-        //forward
+        if(msg.linear.x < 0) {
+            digitalWrite(pin_fwd_left, ENGINE_OFF);
+            analogWrite(pin_rev_left, speed_engine * -1 * msg.linear.x);          
         } else {
+            digitalWrite(pin_rev_left, ENGINE_OFF);
             analogWrite(pin_fwd_left, speed_engine * msg.linear.x);
+        } 
+        if(msg.linear.y < 0) {
+            digitalWrite(pin_fwd_right, ENGINE_OFF);
+            analogWrite(pin_rev_right, speed_engine * -1 * msg.linear.y);
+        } else {
+            digitalWrite(pin_rev_right, ENGINE_OFF);
             analogWrite(pin_fwd_right, speed_engine * msg.linear.y);
         }
 }
@@ -75,10 +83,11 @@ void initPinsMotor() {
   pinMode(pin_fwd_right, OUTPUT);
   pinMode(pin_rev_left, OUTPUT);
   pinMode(pin_rev_right, OUTPUT);
+
   digitalWrite(pin_fwd_left,ENGINE_OFF);
   digitalWrite(pin_fwd_right, ENGINE_OFF);
   digitalWrite(pin_rev_left, ENGINE_OFF);
-  digitalWrite(pin_rev_right, ENGINE_OFF);  
+  digitalWrite(pin_rev_right, ENGINE_OFF);
 }
 
 
@@ -92,13 +101,29 @@ void setup() {
   nh.initNode();
   nh.subscribe(sub);
   
+  //timer
+  //prescaler =256, time = 1s, 16MHz; 62500 ticks needed
+  TCNT5 =0;
+  TCCR5A = 0;
+  TCCR5B = 0;
+  OCR5A = 62500;
+ // OCR5B = 100; use for pwm?
+  TCCR5A |=  (1 << WGM12); //ctc mode
+  TCCR5B |=  (1 << CS12); //256-prescalar
+  TIMSK5 |= (1 << OCIE5A); //enable interrupts
+   
+  
   interrupts();
   
+}
+
+ISR(TIMER5_COMPA_vect) {
+  speed_engine = 0;
 }
 
 
 void loop() {
 
   nh.spinOnce();
-  delay(100);
+  delay(500);
 }
