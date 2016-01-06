@@ -25,14 +25,14 @@ class Controller {
 
 Controller::Controller() {
 	 x = y = z = 0;
-	 vel_pub_ = nh_.advertise<geometry::Twist>("cmd_vel", 1);
+	 vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
 }
 
 
 int kfd =0;
 struct termios cooked, raw;
 
-Controller::keyLoop() {
+void Controller::keyLoop() {
 	char c;
 	bool dirty = false;
 
@@ -49,7 +49,10 @@ Controller::keyLoop() {
    puts("---------------------------");
    puts("Use arrow keys to move the turtle.");
  
- 
+   //linear.x = left
+   //linear.y = right
+   int left  = 0;
+   int right = 0;
    for(;;) {
      // get the next event from the keyboard  
      if(read(kfd, &c, 1) < 0) {
@@ -57,34 +60,35 @@ Controller::keyLoop() {
        exit(-1);
      }
  
-     linear_=angular_=0;
+     left=right=0;
      ROS_DEBUG("value: 0x%02X\n", c);
    
      switch(c) {
        case KEYCODE_FWD:
          ROS_DEBUG("FORWARD");
-         angular_ = 1.0;
+         left = right = 255;
          dirty = true;
          break;
        case KEYCODE_LEFT:
          ROS_DEBUG("LEFT");
-         angular_ = -1.0;
+         left = 255;
          dirty = true;
          break;
        case KEYCODE_RIGHT:
          ROS_DEBUG("RIGHT");
-         linear_ = 1.0;
+         right = 255;
          dirty = true;
          break;
        case KEYCODE_REV:
          ROS_DEBUG("DOWN");
-         linear_ = -1.0;
+         left = -255
+         right = -255
          dirty = true;
          break;
      }
      geometry::Twist vel;
-     vel.angular.x = a_scale_*angular_;
-     vel.linear.x = l_scale_*linear_;
+     vel.linear.x = left;
+     vel.linear.y = right;
      if(dirty ==true) {
      	printf("Publishing\n");
      	vel_pub_.publish(vel);    

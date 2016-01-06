@@ -1,0 +1,7 @@
+POST / HTTP/1.1
+Content-Type: text/xml
+User-Agent: Apache XML RPC ${project.version} (Jakarta Commons httpclient Transport)
+Host: 192.168.0.107:11313
+Content-Length: 317
+
+<?xml version="1.0" encoding="UTF-8"?><methodCall><methodName>registerPublisher</methodName><params><param><value>/ros_camera_preview_view</value></param><param><value>/rosout</value></param><param><value>rosgraph_msgs/Log</value></param><param><value>http://192.168.0.100:42359/</value></param></params></methodCall>

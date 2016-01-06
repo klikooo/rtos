@@ -1,4 +1,6 @@
 #include <ros/ros.h>
+#include "geometry_msgs/Twist.h"
+
 
 #include <signal.h>
 #include <termios.h>
@@ -23,7 +25,7 @@ class Controller {
 
 Controller::Controller() {
 	 x = y = z = 0;
-	 vel_pub_ = nh_.advertise<geometry::Twist>("cmd_vel", 1);
+	 vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
 }
 
 
@@ -59,22 +61,22 @@ Controller::keyLoop() {
      ROS_DEBUG("value: 0x%02X\n", c);
    
      switch(c) {
-       case KEYCODE_L:
-         ROS_DEBUG("LEFT");
+       case KEYCODE_FWD:
+         ROS_DEBUG("FORWARD");
          angular_ = 1.0;
          dirty = true;
          break;
-       case KEYCODE_R:
-         ROS_DEBUG("RIGHT");
+       case KEYCODE_LEFT:
+         ROS_DEBUG("LEFT");
          angular_ = -1.0;
          dirty = true;
          break;
-       case KEYCODE_U:
-         ROS_DEBUG("UP");
+       case KEYCODE_RIGHT:
+         ROS_DEBUG("RIGHT");
          linear_ = 1.0;
          dirty = true;
          break;
-       case KEYCODE_D:
+       case KEYCODE_REV:
          ROS_DEBUG("DOWN");
          linear_ = -1.0;
          dirty = true;
@@ -84,6 +86,7 @@ Controller::keyLoop() {
      vel.angular.x = a_scale_*angular_;
      vel.linear.x = l_scale_*linear_;
      if(dirty ==true) {
+     	printf("Publishing\n");
      	vel_pub_.publish(vel);    
      	dirty=false;
      }

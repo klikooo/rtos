@@ -31,11 +31,21 @@ const int pin_fwd_right = 2; //Timer 3 OCR3B
 const int pin_rev_left = 7;  //Timer 4 OCR4B
 const int pin_rev_right = 3; //Timer 3 OCR3C
 
+const int pin_en_on_left = 24;
+const int pin_en_on_right = 25;
+
+const int pin_sensor_trigger = 23;
+const int pin_sensor_echo    = 22;
+
 volatile int speed_fwd_left = 255;
 volatile int speed_fwd_right = 255;
 volatile int speed_rev_left = 255;
 volatile int speed_rev_right = 255;
 volatile float speed_engine  = 0;
+volatile int stop = 1;
+volatile int fwd_stop = 0;
+
+unsigned long sensorDelay = 0;
 
 
 void messageTwist(const geometry_msgs::Twist& msg);
@@ -51,7 +61,9 @@ ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageTwist);
 void messageTwist(const geometry_msgs::Twist& msg) {
         //SET TIMER COUNT TO 0
         TCNT5 = 0;  
-  
+        stop = 0;
+        
+        
         if(msg.linear.z < 0 || msg.linear.z > 1) {
            speed_engine = 1;
         } else {
@@ -60,18 +72,18 @@ void messageTwist(const geometry_msgs::Twist& msg) {
         
         //backwards
         if(msg.linear.x < 0) {
-            digitalWrite(pin_fwd_left, ENGINE_OFF);
-            analogWrite(pin_rev_left, speed_engine * -1 * msg.linear.x);          
+            speed_rev_left = msg.linear.x * -1;
+            speed_fwd_left = 0;
         } else {
-            digitalWrite(pin_rev_left, ENGINE_OFF);
-            analogWrite(pin_fwd_left, speed_engine * msg.linear.x);
+            speed_fwd_left = msg.linear.x;
+            speed_rev_left = 0;
         } 
         if(msg.linear.y < 0) {
-            digitalWrite(pin_fwd_right, ENGINE_OFF);
-            analogWrite(pin_rev_right, speed_engine * -1 * msg.linear.y);
+            speed_rev_right = msg.linear.y * -1;
+            speed_fwd_right = 0;
         } else {
-            digitalWrite(pin_rev_right, ENGINE_OFF);
-            analogWrite(pin_fwd_right, speed_engine * msg.linear.y);
+            speed_rev_right = 0;
+            speed_fwd_right = msg.linear.y;
         }
 }
 
@@ -83,11 +95,16 @@ void initPinsMotor() {
   pinMode(pin_fwd_right, OUTPUT);
   pinMode(pin_rev_left, OUTPUT);
   pinMode(pin_rev_right, OUTPUT);
-
-  digitalWrite(pin_fwd_left,ENGINE_OFF);
-  digitalWrite(pin_fwd_right, ENGINE_OFF);
-  digitalWrite(pin_rev_left, ENGINE_OFF);
-  digitalWrite(pin_rev_right, ENGINE_OFF);
+  pinMode(pin_sensor_trigger, OUTPUT);
+  pinMode(pin_sensor_echo, INPUT);
+  pinMode(pin_en_on_left, OUTPUT);
+  pinMode(pin_en_on_right, OUTPUT);
+  
+  digitalWrite(pin_en_on_left, HIGH);
+  digitalWrite(pin_en_on_right, HIGH);
+  
+  
+  
 }
 
 
@@ -118,12 +135,42 @@ void setup() {
 }
 
 ISR(TIMER5_COMPA_vect) {
-  speed_engine = 0;
+  stop = 1;
 }
 
 
 void loop() {
 
   nh.spinOnce();
-  delay(500);
+  if (millis() > sensorDelay ) {
+    digitalWrite(pin_sensor_trigger, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(pin_sensor_trigger, LOW);
+    long distance = pulseIn(pin_sensor_echo, HIGH);    
+    if (distance <= 1200) {
+      fwd_stop = 1;
+    }
+    
+    sensorDelay = millis() + 50;
+    
+    if(stop) {
+      digitalWrite(pin_rev_left, ENGINE_OFF);
+      digitalWrite(pin_fwd_right, ENGINE_OFF);
+      digitalWrite(pin_fwd_left, ENGINE_OFF);
+      digitalWrite(pin_rev_right, ENGINE_OFF);
+    } else {
+      if(!fwd_stop) {          
+        analogWrite(pin_fwd_left, speed_engine * speed_fwd_left);    
+        analogWrite(pin_fwd_right, speed_engine * speed_fwd_right);
+      } else {
+        digitalWrite(pin_fwd_right, ENGINE_OFF);
+        digitalWrite(pin_fwd_left, ENGINE_OFF);      
+      }
+      analogWrite(pin_rev_left, speed_engine * speed_rev_left);
+      analogWrite(pin_rev_right, speed_engine * speed_rev_right);
+      fwd_stop = 0;
+    }
+  }
+  
+  
 }
