@@ -2,7 +2,7 @@
 #include <std_msgs/Empty.h>
 #include <geometry_msgs/Twist.h>
 
-#define ENGINE_OFF HIGH
+#define ENGINE_OFF LOW
 
 
 /**
@@ -26,10 +26,10 @@ OCR = Output Compare Register (reset when timer hits value of OCR)
 
 */
 
-const int pin_fwd_left = 6; //Timer 4  OCR4A
-const int pin_fwd_right = 2; //Timer 3 OCR3B
-const int pin_rev_left = 7;  //Timer 4 OCR4B
-const int pin_rev_right = 3; //Timer 3 OCR3C
+const int pin_fwd_right = 6; //Timer 4  OCR4A
+const int pin_fwd_left = 2; //Timer 3 OCR3B
+const int pin_rev_right = 7;  //Timer 4 OCR4B
+const int pin_rev_left = 3; //Timer 3 OCR3C
 
 const int pin_en_on_left = 24;
 const int pin_en_on_right = 25;
@@ -97,9 +97,11 @@ void initPinsMotor() {
   pinMode(pin_rev_right, OUTPUT);
   pinMode(pin_sensor_trigger, OUTPUT);
   pinMode(pin_sensor_echo, INPUT);
+  
+  
+  //enable engine
   pinMode(pin_en_on_left, OUTPUT);
   pinMode(pin_en_on_right, OUTPUT);
-  
   digitalWrite(pin_en_on_left, HIGH);
   digitalWrite(pin_en_on_right, HIGH);
   
@@ -143,6 +145,7 @@ void loop() {
 
   nh.spinOnce();
   if (millis() > sensorDelay ) {
+    fwd_stop = 0;
     digitalWrite(pin_sensor_trigger, HIGH);
     delayMicroseconds(10);
     digitalWrite(pin_sensor_trigger, LOW);
@@ -150,26 +153,25 @@ void loop() {
     if (distance <= 1200) {
       fwd_stop = 1;
     }
-    
     sensorDelay = millis() + 50;
-    
-    if(stop) {
-      digitalWrite(pin_rev_left, ENGINE_OFF);
-      digitalWrite(pin_fwd_right, ENGINE_OFF);
-      digitalWrite(pin_fwd_left, ENGINE_OFF);
-      digitalWrite(pin_rev_right, ENGINE_OFF);
+  }
+  
+  if(stop) {
+    digitalWrite(pin_rev_left, ENGINE_OFF);
+    digitalWrite(pin_fwd_right, ENGINE_OFF);
+    digitalWrite(pin_fwd_left, ENGINE_OFF);
+    digitalWrite(pin_rev_right, ENGINE_OFF);
+  } else {
+    if(!fwd_stop) {          
+      analogWrite(pin_fwd_left, speed_engine * speed_fwd_left);    
+      analogWrite(pin_fwd_right, speed_engine * speed_fwd_right);
     } else {
-      if(!fwd_stop) {          
-        analogWrite(pin_fwd_left, speed_engine * speed_fwd_left);    
-        analogWrite(pin_fwd_right, speed_engine * speed_fwd_right);
-      } else {
-        digitalWrite(pin_fwd_right, ENGINE_OFF);
-        digitalWrite(pin_fwd_left, ENGINE_OFF);      
-      }
-      analogWrite(pin_rev_left, speed_engine * speed_rev_left);
-      analogWrite(pin_rev_right, speed_engine * speed_rev_right);
-      fwd_stop = 0;
+      digitalWrite(pin_fwd_right, ENGINE_OFF);
+      digitalWrite(pin_fwd_left, ENGINE_OFF);      
     }
+    analogWrite(pin_rev_left, speed_engine * speed_rev_left);
+    analogWrite(pin_rev_right, speed_engine * speed_rev_right);
+  
   }
   
   
