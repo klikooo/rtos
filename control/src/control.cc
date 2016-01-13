@@ -11,6 +11,7 @@
 #define KEYCODE_REV 0x73
 #define KEYCODE_LEFT 0x61
 #define KEYCODE_RIGHT 0x64
+#define KEYCODE_STOP 0x71
 #define KEYCODE_INCREASE_SPEED 0x72 //r
 #define KEYCODE_DECREASE_SPEED 0x66 //f
 
@@ -84,6 +85,12 @@ void Controller::keyLoop() {
          ROS_DEBUG("RIGHT");
          left = 255;
 	 right = -255;
+         dirty = true;
+         break;
+       case KEYCODE_STOP:
+         ROS_DEBUG("STOP");
+         left =0;
+         right =0;
          dirty = true;
          break;
        case KEYCODE_REV:
