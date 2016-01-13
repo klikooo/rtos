@@ -76,12 +76,14 @@ void Controller::keyLoop() {
          break;
        case KEYCODE_LEFT:
          ROS_DEBUG("LEFT");
+	 left = -255;
          right = 255;
          dirty = true;
          break;
        case KEYCODE_RIGHT:
          ROS_DEBUG("RIGHT");
          left = 255;
+	 right = -255;
          dirty = true;
          break;
        case KEYCODE_REV:
