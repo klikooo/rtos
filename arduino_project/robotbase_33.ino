@@ -1,3 +1,11 @@
+/**
+∗ Group number : 33
+∗ Student1 : Rico Tubbing
+∗ Rico Tubbing, 4254104
+∗ Student2 : 4374657
+* Stefan Breetveld, 
+*/
+
 #include <ros.h>
 #include <std_msgs/Empty.h>
 #include <geometry_msgs/Twist.h>
@@ -48,85 +56,91 @@ volatile int fwd_stop = 0;
 unsigned long sensorDelay = 0;
 
 
+//callback function prototype
 void messageTwist(const geometry_msgs::Twist& msg);
 
+//For connection over bluetooth
 class NewHardware: public ArduinoHardware {
   public: NewHardware() : ArduinoHardware(&Serial1, 57600) {};
 };
 
 ros::NodeHandle_<NewHardware> nh;
+//Subscribe to Twist messages on cmd_vel with the callback function
 ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageTwist);
 
-// speed : 0 is top, 255 is min?
+//The callback function when we receive a message
 void messageTwist(const geometry_msgs::Twist& msg) {
-        //SET TIMER COUNT TO 0
+        //Set timer count to 0 and set stop to 0
         TCNT5 = 0;  
         stop = 0;
         
-        
+        //set the speed
         if(msg.linear.z < 0 || msg.linear.z > 1) {
            speed_engine = 1;
         } else {
            speed_engine = msg.linear.z;
         }
         
-        //backwards
+        //left backwards
         if(msg.linear.x < 0) {
             speed_rev_left = msg.linear.x * -1;
             speed_fwd_left = 0;
-        } else {
+        //left forwards
+        } else {  
             speed_fwd_left = msg.linear.x;
             speed_rev_left = 0;
         } 
+        //right backwards
         if(msg.linear.y < 0) {
             speed_rev_right = msg.linear.y * -1;
             speed_fwd_right = 0;
-        } else {
+        //right forwards 
+        } else { 
             speed_rev_right = 0;
             speed_fwd_right = msg.linear.y;
         }
 }
 
 
-void initPinsMotor() {
-  //init all pins for the engine
-  //do we need pinMode?
+void initPins() {
+  //set pinmode for the engine control
   pinMode(pin_fwd_left, OUTPUT);
   pinMode(pin_fwd_right, OUTPUT);
   pinMode(pin_rev_left, OUTPUT);
   pinMode(pin_rev_right, OUTPUT);
+  //set pinmode for the sonser
   pinMode(pin_sensor_trigger, OUTPUT);
   pinMode(pin_sensor_echo, INPUT);
   
   
-  //enable engine
+  //senable engine
   pinMode(pin_en_on_left, OUTPUT);
   pinMode(pin_en_on_right, OUTPUT);
   digitalWrite(pin_en_on_left, HIGH);
   digitalWrite(pin_en_on_right, HIGH);
-  
-  
-  
 }
 
 
 
 
 void setup() {
-  
+
   noInterrupts();
-  
-  initPinsMotor();
+  //init all pins  
+  initPins();
+  //init out node and subscribe
   nh.initNode();
   nh.subscribe(sub);
   
   //timer
   //prescaler =256, time = 1s, 16MHz; 62500 ticks needed
-  TCNT5 =0;
+  TCNT5 =0; //count to zero
+  //clear control registers
   TCCR5A = 0;
   TCCR5B = 0;
+  //set time needed to fire an interrupt
   OCR5A = 62500;
- // OCR5B = 100; use for pwm?
+  //set control registers
   TCCR5A |=  (1 << WGM12); //ctc mode
   TCCR5B |=  (1 << CS12); //256-prescalar
   TIMSK5 |= (1 << OCIE5A); //enable interrupts
@@ -136,14 +150,16 @@ void setup() {
   
 }
 
+//interrupt for timer 5, when the interrupt is called the robot stops
 ISR(TIMER5_COMPA_vect) {
   stop = 1;
 }
 
 
 void loop() {
-
+  //when we get a message, make the callback function
   nh.spinOnce();
+  
   if (millis() > sensorDelay ) {
     fwd_stop = 0;
     digitalWrite(pin_sensor_trigger, HIGH);
@@ -155,16 +171,18 @@ void loop() {
     }
     sensorDelay = millis() + 50;
   }
-  
+  //stop if we have not received any msgs (in the last second)
   if(stop) {
     digitalWrite(pin_rev_left, ENGINE_OFF);
     digitalWrite(pin_fwd_right, ENGINE_OFF);
     digitalWrite(pin_fwd_left, ENGINE_OFF);
     digitalWrite(pin_rev_right, ENGINE_OFF);
   } else {
+    //we can go forward if there is a no object in our way
     if(!fwd_stop) {          
       analogWrite(pin_fwd_left, speed_engine * speed_fwd_left);    
       analogWrite(pin_fwd_right, speed_engine * speed_fwd_right);
+    //now we cant go forward, so stop the forward engines
     } else {
       digitalWrite(pin_fwd_right, ENGINE_OFF);
       digitalWrite(pin_fwd_left, ENGINE_OFF);      
