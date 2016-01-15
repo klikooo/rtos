@@ -160,15 +160,20 @@ void loop() {
   //when we get a message, make the callback function
   nh.spinOnce();
   
+  //make sure that we only do things with the ultrasonic sensor after the specified minimal delay
   if (millis() > sensorDelay ) {
-    fwd_stop = 0;
+    fwd_stop = 0; //reset fwd_stop
+    //specifications note that the sensor should be enabled for 10 μs
     digitalWrite(pin_sensor_trigger, HIGH);
     delayMicroseconds(10);
     digitalWrite(pin_sensor_trigger, LOW);
-    long distance = pulseIn(pin_sensor_echo, HIGH);    
-    if (distance <= 1200) {
-      fwd_stop = 1;
+    //measure the time it takes for the pin to receive a high signal, times out after 1 second.
+    long duration = pulseIn(pin_sensor_echo, HIGH); 
+    //a duration of 1200 μs makes for a distance of (1200/58) approximately 21 centimeters
+    if (duration <= 1200) {
+      fwd_stop = 1; //set fwd_stop
     }
+    //set the next time the sensor operation can be run
     sensorDelay = millis() + 50;
   }
   //stop if we have not received any msgs (in the last second)
